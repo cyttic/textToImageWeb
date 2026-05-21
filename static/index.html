@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hebrew Text Renderer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      background: #f8f9fa;
+      color: #202124;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      direction: ltr;
+    }
+    header .logo {
+      font-size: 22px;
+      font-weight: 600;
+      color: #4285f4;
+      letter-spacing: -0.5px;
+    }
+    header .logo span { color: #ea4335; }
+
+    /* ── Controls bar ── */
+    .controls {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      direction: ltr;
+      flex-wrap: wrap;
+    }
+    .controls label { font-size: 13px; color: #5f6368; font-weight: 500; }
+    .controls select, .controls input[type=range], .controls input[type=color] {
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      background: #fff;
+      color: #202124;
+      cursor: pointer;
+    }
+    .controls select { min-width: 220px; }
+    .controls input[type=range] { width: 120px; padding: 0; cursor: pointer; }
+    #size-label { font-size: 13px; color: #5f6368; min-width: 30px; }
+
+    /* ── Main panels ── */
+    .panels {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      min-height: 0;
+    }
+
+    .panel-header {
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #5f6368;
+      border-bottom: 1px solid #f1f3f4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      direction: ltr;
+    }
+    .panel-header .lang-badge {
+      background: #e8f0fe;
+      color: #1a73e8;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+    .panel-header .char-count {
+      font-size: 12px;
+      color: #bdc1c6;
+      font-weight: 400;
+    }
+
+    .divider {
+      width: 1px;
+      background: #e0e0e0;
+      flex-shrink: 0;
+    }
+
+    /* ── Left: text input ── */
+    #input-area {
+      flex: 1;
+      width: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 24px;
+      line-height: 1.6;
+      padding: 20px;
+      direction: rtl;
+      text-align: right;
+      color: #202124;
+      font-family: Arial, sans-serif;
+      background: transparent;
+    }
+    #input-area::placeholder { color: #bdc1c6; }
+
+    .left-footer {
+      padding: 10px 20px;
+      border-top: 1px solid #f1f3f4;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      direction: ltr;
+    }
+    .btn {
+      padding: 8px 18px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1558b0; }
+    .btn-ghost { background: transparent; color: #5f6368; border: 1px solid #dadce0; }
+    .btn-ghost:hover { background: #f1f3f4; }
+
+    /* ── Right: image output ── */
+    #output-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #fafafa;
+      overflow: auto;
+    }
+    #output-area img {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+      background: #fff;
+    }
+    .placeholder-text {
+      color: #bdc1c6;
+      font-size: 16px;
+      text-align: center;
+      direction: ltr;
+    }
+
+    .right-footer {
+      padding: 10px 20px;
+      border-top: 1px solid #f1f3f4;
+      display: flex;
+      justify-content: flex-end;
+      direction: ltr;
+    }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Hebrew <span>Text</span> Renderer</div>
+</header>
+
+<div class="controls">
+  <label>Font:</label>
+  <select id="font-select"><option>Loading fonts…</option></select>
+
+  <label>Size:</label>
+  <input type="range" id="font-size" min="24" max="120" value="60">
+  <span id="size-label">60px</span>
+
+  <label>Text color:</label>
+  <input type="color" id="fg-color" value="#1a1a1a">
+
+  <label>Background:</label>
+  <input type="color" id="bg-color" value="#ffffff">
+</div>
+
+<div class="panels">
+
+  <!-- Left panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="lang-badge">עברית · Hebrew</span>
+      <span class="char-count" id="char-count">0</span>
+    </div>
+    <textarea id="input-area" placeholder="הקלד כאן טקסט בעברית…" spellcheck="false"></textarea>
+    <div class="left-footer">
+      <button class="btn btn-ghost" onclick="clearInput()">Clear</button>
+      <button class="btn btn-primary" onclick="renderNow()">Render →</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Right panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <span style="direction:ltr">Generated Image</span>
+    </div>
+    <div id="output-area">
+      <div class="placeholder-text">Type Hebrew text on the left<br>and click Render</div>
+    </div>
+    <div class="right-footer">
+      <button class="btn btn-ghost" id="dl-btn" onclick="download()" style="display:none">⬇ Download PNG</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let fonts = [];
+  let debounceTimer = null;
+  let lastImgData = null;
+
+  // Load fonts
+  fetch('/fonts').then(r => r.json()).then(data => {
+    fonts = data;
+    const sel = document.getElementById('font-select');
+    sel.innerHTML = fonts.map(f =>
+      `<option value="${f.file}">${f.name}</option>`).join('');
+  });
+
+  // Char count
+  document.getElementById('input-area').addEventListener('input', () => {
+    const txt = document.getElementById('input-area').value;
+    document.getElementById('char-count').textContent = txt.length + ' chars';
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(renderNow, 800);
+  });
+
+  // Size slider
+  document.getElementById('font-size').addEventListener('input', e => {
+    document.getElementById('size-label').textContent = e.target.value + 'px';
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(renderNow, 400);
+  });
+
+  // Color pickers
+  ['fg-color', 'bg-color'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(renderNow, 200);
+    });
+  });
+
+  // Font select
+  document.getElementById('font-select').addEventListener('change', renderNow);
+
+  function clearInput() {
+    document.getElementById('input-area').value = '';
+    document.getElementById('char-count').textContent = '0 chars';
+    document.getElementById('output-area').innerHTML =
+      '<div class="placeholder-text">Type Hebrew text on the left<br>and click Render</div>';
+    document.getElementById('dl-btn').style.display = 'none';
+    lastImgData = null;
+  }
+
+  async function renderNow() {
+    const text = document.getElementById('input-area').value.trim();
+    if (!text) return;
+
+    const font_file = document.getElementById('font-select').value;
+    if (!font_file || font_file === 'Loading fonts…') return;
+
+    const font_size = parseInt(document.getElementById('font-size').value);
+    const fg = document.getElementById('fg-color').value;
+    const bg = document.getElementById('bg-color').value;
+
+    const out = document.getElementById('output-area');
+    out.innerHTML = '<div class="spinner"></div>';
+
+    try {
+      const resp = await fetch('/render', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text, font_file, font_size, fg, bg })
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      const data = await resp.json();
+      lastImgData = data.image;
+      out.innerHTML = `<img src="data:image/png;base64,${data.image}" alt="rendered">`;
+      document.getElementById('dl-btn').style.display = 'inline-block';
+    } catch (e) {
+      out.innerHTML = `<div class="placeholder-text" style="color:#ea4335">Error: ${e.message}</div>`;
+    }
+  }
+
+  function download() {
+    if (!lastImgData) return;
+    const a = document.createElement('a');
+    a.href = 'data:image/png;base64,' + lastImgData;
+    a.download = 'hebrew_text.png';
+    a.click();
+  }
+</script>
+</body>
+</html>
