@@ -1,9 +1,17 @@
 import io
 import os
+import re
 import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
 from bidi.algorithm import get_display
+
+# Hebrew nikud (vowel points) + cantillation marks: U+0591–U+05C7
+_NIKUD_RE = re.compile(r'[֑-ׇ]')
+
+def strip_nikud(text: str) -> str:
+    """Remove Hebrew diacritical marks (nikud, dagesh, cantillation) from text."""
+    return _NIKUD_RE.sub('', text)
 
 FONT_DIRS = [
     "/mnt/ssd2/cyttic/datasets/hebrew-handwritten-dataset/fonts_out",
@@ -40,6 +48,7 @@ def render(text: str, font_path: str, font_size: int = 60,
            max_width: int = 760, padding: int = 30,
            bg: str = "#ffffff", fg: str = "#1a1a1a") -> bytes:
 
+    text = strip_nikud(text)
     font = ImageFont.truetype(font_path, size=font_size)
 
     # Wrap long text into lines

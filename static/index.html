@@ -215,6 +215,9 @@
       <span class="char-count" id="char-count">0</span>
     </div>
     <textarea id="input-area" placeholder="הקלד כאן טקסט בעברית…" spellcheck="false"></textarea>
+    <div id="nikud-notice" style="display:none; padding:6px 20px; font-size:12px; color:#f29900; background:#fef7e0; border-top:1px solid #fde68a; direction:ltr;">
+      ⚠ Nikud (vowel points) detected — stripped automatically for rendering
+    </div>
     <div class="left-footer">
       <button class="btn btn-ghost" onclick="clearInput()">Clear</button>
       <button class="btn btn-primary" onclick="renderNow()">Render →</button>
@@ -301,7 +304,12 @@
     out.innerHTML = '<div class="spinner"></div>';
 
     try {
-      const resp = await fetch('/render', {
+      // Warn if nikud detected
+    const hasNikud = /[֑-ׇ]/.test(text);
+    const notice = document.getElementById('nikud-notice');
+    if (notice) notice.style.display = hasNikud ? 'block' : 'none';
+
+    const resp = await fetch('/render', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ text, font_file, font_size, fg, bg })
