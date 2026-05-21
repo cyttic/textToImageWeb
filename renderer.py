@@ -4,7 +4,6 @@ import re
 import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
-from bidi.algorithm import get_display
 
 # Hebrew nikud (vowel points) + cantillation marks: U+0591–U+05C7
 _NIKUD_RE = re.compile(r'[֑-ׇ]')
@@ -63,15 +62,12 @@ def render(text: str, font_path: str, font_size: int = 60,
         wrapped = textwrap.wrap(raw, width=chars_per_line) or [raw]
         lines.extend(wrapped)
 
-    # Apply RTL (bidi) to each line
-    bidi_lines = [get_display(line) if line.strip() else "" for line in lines]
-
     # Measure
     dummy   = Image.new("RGB", (1, 1))
     draw    = ImageDraw.Draw(dummy)
     line_h  = font_size + int(font_size * 0.3)
     widths  = []
-    for line in bidi_lines:
+    for line in lines:
         if line:
             bb = draw.textbbox((0, 0), line, font=font)
             widths.append(bb[2] - bb[0])
@@ -79,18 +75,15 @@ def render(text: str, font_path: str, font_size: int = 60,
             widths.append(0)
 
     img_w = min(max(max_width, max(widths, default=0) + 2 * padding), 1600)
-    img_h = line_h * len(bidi_lines) + 2 * padding
+    img_h = line_h * len(lines) + 2 * padding
 
     img  = Image.new("RGB", (img_w, img_h), bg)
     draw = ImageDraw.Draw(img)
 
     y = padding
-    for line in bidi_lines:
+    for line in lines:
         if line.strip():
-            bb = draw.textbbox((0, 0), line, font=font)
-            lw = bb[2] - bb[0]
-            x  = img_w - padding - lw        # right-align for Hebrew
-            draw.text((x, y), line, font=font, fill=fg)
+            draw.text((padding, y), line, font=font, fill=fg)
         y += line_h
 
     buf = io.BytesIO()
