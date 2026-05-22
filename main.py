@@ -1,6 +1,6 @@
 import base64
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
@@ -22,7 +22,7 @@ class RenderRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    with open("static/index.html", encoding="utf-8") as f:
+    with open("static/HebrewTextRenderer.html", encoding="utf-8") as f:
         return f.read()
 
 
@@ -46,18 +46,35 @@ def background_image(filename: str):
 
 @app.post("/render")
 def render(req: RenderRequest):
+    """Display render — transparent background so HTML paper shows through."""
     path = renderer.get_font_path(req.font_file)
     if not path:
         raise HTTPException(404, f"Font not found: {req.font_file}")
     try:
         png = renderer.render(
-            text=req.text,
-            font_path=path,
-            font_size=req.font_size,
-            bg=req.bg,
-            fg=req.fg,
-            bg_image=req.bg_image,
+            text=req.text, font_path=path, font_size=req.font_size,
+            bg=req.bg, fg=req.fg, transparent=True,
         )
         return JSONResponse({"image": base64.b64encode(png).decode()})
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@app.post("/download")
+def download(req: RenderRequest):
+    """Export render — solid or texture background, returns raw PNG."""
+    path = renderer.get_font_path(req.font_file)
+    if not path:
+        raise HTTPException(404, f"Font not found: {req.font_file}")
+    try:
+        png = renderer.render(
+            text=req.text, font_path=path, font_size=req.font_size,
+            bg=req.bg, fg=req.fg,
+            bg_image=req.bg_image,
+            transparent=False,
+        )
+        return Response(content=png, media_type="image/png",
+                        headers={"Content-Disposition":
+                                 'attachment; filename="hebrew_text.png"'})
     except Exception as e:
         raise HTTPException(500, str(e))

@@ -59,7 +59,8 @@ def get_background_path(filename: str) -> str | None:
 def render(text: str, font_path: str, font_size: int = 60,
            max_width: int = 760, padding: int = 30,
            bg: str = "#ffffff", fg: str = "#1a1a1a",
-           bg_image: str | None = None) -> bytes:
+           bg_image: str | None = None,
+           transparent: bool = False) -> bytes:
 
     text = strip_nikud(text)
     font = ImageFont.truetype(font_path, size=font_size)
@@ -88,11 +89,12 @@ def render(text: str, font_path: str, font_size: int = 60,
     img_h = line_h * len(lines) + 2 * padding
 
     # Build background
-    if bg_image:
+    if transparent:
+        img = Image.new("RGBA", (img_w, img_h), (0, 0, 0, 0))
+    elif bg_image:
         bg_path = get_background_path(bg_image)
         if bg_path:
             src = Image.open(bg_path).convert("RGB")
-            # Crop a centered region that matches our target size
             sw, sh = src.size
             if sw < img_w or sh < img_h:
                 src = src.resize((max(sw, img_w), max(sh, img_h)))
