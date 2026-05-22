@@ -183,6 +183,39 @@
       animation: spin 0.7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toggle switch ── */
+    .toggle-wrap {
+      display: flex; align-items: center; gap: 8px;
+      border-left: 1px solid #e0e0e0; padding-left: 16px;
+    }
+    .toggle-wrap label { font-size: 13px; color: #5f6368; font-weight: 500; cursor: pointer; }
+    .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; background: #ccc;
+      border-radius: 20px; transition: .25s; cursor: pointer;
+    }
+    .slider:before {
+      content: ''; position: absolute;
+      width: 14px; height: 14px; left: 3px; bottom: 3px;
+      background: #fff; border-radius: 50%; transition: .25s;
+    }
+    input:checked + .slider { background: #1a73e8; }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    /* ── Toast notification ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #323232; color: #fff;
+      padding: 12px 24px; border-radius: 8px;
+      font-size: 14px; white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 999; direction: ltr;
+    }
+    #toast.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -204,7 +237,17 @@
 
   <label>Background:</label>
   <input type="color" id="bg-color" value="#ffffff">
+
+  <div class="toggle-wrap">
+    <label for="hebrew-only">Hebrew alphabet only</label>
+    <label class="switch">
+      <input type="checkbox" id="hebrew-only">
+      <span class="slider"></span>
+    </label>
+  </div>
 </div>
+
+<div id="toast"></div>
 
 <div class="panels">
 
@@ -245,6 +288,27 @@
   let fonts = [];
   let debounceTimer = null;
   let lastImgData = null;
+  let toastTimer = null;
+
+  // Hebrew letters + final forms: U+05D0–U+05EA
+  const HEBREW_RE = /[^א-ת\s]/g;
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+  }
+
+  function filterText(text) {
+    if (!document.getElementById('hebrew-only').checked) return text;
+    const filtered = text.replace(HEBREW_RE, '');
+    if (filtered !== text) {
+      showToast('⚠ This font supports Hebrew alphabet only — non-Hebrew characters were removed');
+    }
+    return filtered;
+  }
 
   // Load fonts
   fetch('/fonts').then(r => r.json()).then(data => {
@@ -289,8 +353,12 @@
     lastImgData = null;
   }
 
+  // Re-render when toggle changes
+  document.getElementById('hebrew-only').addEventListener('change', renderNow);
+
   async function renderNow() {
-    const text = document.getElementById('input-area').value.trim();
+    const raw  = document.getElementById('input-area').value.trim();
+    const text = filterText(raw);
     if (!text) return;
 
     const font_file = document.getElementById('font-select').value;
