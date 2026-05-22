@@ -7,12 +7,22 @@ from PIL import Image, ImageDraw, ImageFont
 
 _NIKUD_RE = re.compile(r'[֑-ׇ]')
 
-FONT_DIRS = [
+_DEFAULT_FONT_DIRS = [
     "/mnt/ssd2/cyttic/datasets/hebrew-handwritten-dataset/fonts_out",
     "/mnt/ssd2/cyttic/projects/handwrittenTextGenerator/fonts",
+    "/app/fonts",
 ]
+FONT_DIRS = [d for d in (
+    os.environ.get("FONT_DIRS", "").split(":") + _DEFAULT_FONT_DIRS
+) if d and os.path.isdir(d)]
 
-BG_DIR = "/mnt/ssd2/cyttic/projects/handwrittenTextGenerator/images"
+BG_DIR = os.environ.get(
+    "BG_DIR",
+    next((d for d in [
+        "/app/backgrounds",
+        "/mnt/ssd2/cyttic/projects/handwrittenTextGenerator/images",
+    ] if os.path.isdir(d)), "/app/backgrounds")
+)
 
 
 def strip_nikud(text: str) -> str:

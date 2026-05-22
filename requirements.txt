@@ -1,0 +1,7 @@
+fastapi==0.136.1
+uvicorn[standard]==0.47.0
+pillow==12.2.0
+fonttools==4.63.0
+opencv-python-headless
+python-multipart
+numpy

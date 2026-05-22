@@ -468,7 +468,8 @@
       align-items: center;
       justify-content: center;
       padding: 28px;
-      overflow: auto;
+      overflow: hidden;
+      cursor: zoom-in;
       position: relative;
       background:
         linear-gradient(var(--paper-2), var(--paper-2)),
@@ -673,6 +674,91 @@
       color: var(--ink-mute);
     }
 
+    /* ── Export modal ── */
+    #export-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(26,23,20,0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    #export-modal.open { display: flex; }
+    #export-box {
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      width: 900px; max-width: 96vw;
+      max-height: 90vh;
+      display: flex; flex-direction: column;
+      box-shadow: var(--shadow-lg);
+      direction: ltr;
+      overflow: hidden;
+    }
+    #export-header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--rule-soft);
+      background: linear-gradient(180deg, var(--paper-2), var(--paper));
+      display: flex; align-items: baseline; gap: 14px;
+    }
+    #export-header .modal-eyebrow { margin: 0; }
+    #export-header h3 {
+      font-family: var(--font-display); font-size: 26px;
+      font-weight: 500; color: var(--ink);
+    }
+    #export-header h3 em { font-style: italic; color: var(--bronze-deep); }
+    #export-body {
+      flex: 1; display: flex; gap: 0; overflow: hidden; min-height: 0;
+    }
+    /* Left: preview */
+    #export-preview {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 32px;
+      background: repeating-linear-gradient(
+        0deg, transparent 0, transparent 23px, var(--rule-soft) 23px, var(--rule-soft) 24px);
+      border-right: 1px solid var(--rule-soft);
+      overflow: hidden; position: relative; min-width: 0;
+    }
+    #export-preview img { max-width: 100%; max-height: 100%; border-radius: 3px; }
+    #export-preview .spinner { position: absolute; }
+    /* Right: controls */
+    #export-controls {
+      width: 270px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      padding: 24px 22px;
+      gap: 20px; overflow-y: auto;
+    }
+    .exp-section { display: flex; flex-direction: column; gap: 10px; }
+    .exp-label {
+      font-family: var(--font-mono); font-size: 10px;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--ink-mute); font-weight: 500;
+    }
+    .exp-row { display: flex; align-items: center; gap: 10px; }
+    .exp-row input[type=color] {
+      width: 40px; height: 32px; padding: 2px;
+      border: 1px solid var(--rule); border-radius: 4px; cursor: pointer;
+    }
+    .exp-color-name {
+      font-family: var(--font-mono); font-size: 12px; color: var(--ink);
+    }
+    #exp-bg-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 6px; max-height: 220px; overflow-y: auto;
+    }
+    #exp-bg-grid .bg-thumb { aspect-ratio: 1; }
+    .exp-divider {
+      border: none; border-top: 1px solid var(--rule-soft); margin: 0;
+    }
+    #export-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--rule-soft);
+      background: linear-gradient(0deg, var(--paper-2), var(--paper));
+      display: flex; justify-content: space-between; align-items: center;
+      direction: ltr; gap: 12px;
+    }
+    #export-footer .modal-hint { font-size: 13px; }
+
     /* ── Toast ── */
     #toast {
       position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(8px);
@@ -792,6 +878,53 @@
 
 <div id="toast"></div>
 
+<!-- Export modal -->
+<div id="export-modal">
+  <div id="export-box">
+    <div id="export-header">
+      <div class="modal-eyebrow">Export · PNG</div>
+      <h3>Save <em>Plate</em></h3>
+    </div>
+    <div id="export-body">
+      <div id="export-preview">
+        <div class="placeholder-text" id="exp-placeholder">
+          <span class="ornament">⁕</span>Preparing…
+        </div>
+      </div>
+      <div id="export-controls">
+        <div class="exp-section">
+          <div class="exp-label">Ink color</div>
+          <div class="exp-row">
+            <input type="color" id="exp-fg" value="#1a1a1a"
+                   oninput="updateExpColorName('exp-fg','exp-fg-name'); scheduleExpPreview()">
+            <span class="exp-color-name" id="exp-fg-name">#1a1a1a</span>
+          </div>
+        </div>
+        <div class="exp-section">
+          <div class="exp-label">Paper color</div>
+          <div class="exp-row">
+            <input type="color" id="exp-bg" value="#ffffff"
+                   oninput="updateExpColorName('exp-bg','exp-bg-name'); scheduleExpPreview()">
+            <span class="exp-color-name" id="exp-bg-name">#ffffff</span>
+          </div>
+        </div>
+        <hr class="exp-divider">
+        <div class="exp-section">
+          <div class="exp-label">Background texture</div>
+          <div id="exp-bg-grid"></div>
+        </div>
+      </div>
+    </div>
+    <div id="export-footer">
+      <span class="modal-hint">Choose appearance, then save.</span>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-ghost" onclick="closeExportModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="doDownload()">↓ Save PNG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Background picker modal -->
 <div id="bg-modal">
   <div id="bg-modal-box">
@@ -853,7 +986,7 @@
       </div>
     </div>
     <div class="right-footer">
-      <button class="btn btn-ghost" id="dl-btn" onclick="download()" style="display:none">↓ Download PNG</button>
+      <button class="btn btn-ghost" id="dl-btn" onclick="openExportModal()" style="display:none">↓ Save PNG…</button>
     </div>
   </div>
 
@@ -1048,21 +1181,151 @@
     }
   }
 
-  async function download() {
+  // ── Wheel zoom on output area (cursor-centered) ───────────────────────
+  let zoomScale = 1, zoomTx = 0, zoomTy = 0;
+  const ZOOM_MIN = 0.15, ZOOM_MAX = 10, ZOOM_STEP = 1.12;
+
+  function applyZoom(img) {
+    img.style.transformOrigin = 'center center';
+    img.style.transform = `translate(${zoomTx}px, ${zoomTy}px) scale(${zoomScale})`;
+  }
+
+  document.getElementById('output-area').addEventListener('wheel', e => {
+    const img = document.querySelector('#output-area img');
+    if (!img) return;
+    e.preventDefault();
+
+    const out   = document.getElementById('output-area');
+    const cRect = out.getBoundingClientRect();
+
+    // Mouse position relative to container center
+    const mx = e.clientX - (cRect.left + cRect.width  / 2);
+    const my = e.clientY - (cRect.top  + cRect.height / 2);
+
+    const oldScale = zoomScale;
+    const factor   = e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+    zoomScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, oldScale * factor));
+
+    // Translate so the point under the cursor stays fixed
+    const ratio = zoomScale / oldScale;
+    zoomTx = mx * (1 - ratio) + zoomTx * ratio;
+    zoomTy = my * (1 - ratio) + zoomTy * ratio;
+
+    applyZoom(img);
+  }, { passive: false });
+
+  // Double-click to reset zoom
+  document.getElementById('output-area').addEventListener('dblclick', () => {
+    zoomScale = 1; zoomTx = 0; zoomTy = 0;
+    const img = document.querySelector('#output-area img');
+    if (img) applyZoom(img);
+  });
+
+  // ── Export modal ────────────────────────────────────────────────────────
+  let expBg = null;
+  let expPreviewTimer = null;
+  let expBgsLoaded = false;
+
+  function updateExpColorName(inputId, nameId) {
+    document.getElementById(nameId).textContent =
+      document.getElementById(inputId).value;
+  }
+
+  async function openExportModal() {
+    // Pre-fill with current main colors
+    document.getElementById('exp-fg').value = document.getElementById('fg-color').value;
+    document.getElementById('exp-bg').value = document.getElementById('bg-color').value;
+    updateExpColorName('exp-fg','exp-fg-name');
+    updateExpColorName('exp-bg','exp-bg-name');
+    expBg = selectedBg;
+
+    // Load texture thumbnails once
+    if (!expBgsLoaded) {
+      expBgsLoaded = true;
+      const grid = document.getElementById('exp-bg-grid');
+      const bgs = await fetch('/backgrounds').then(r => r.json()).catch(() => []);
+
+      const none = document.createElement('div');
+      none.className = 'bg-thumb bg-none' + (!expBg ? ' selected' : '');
+      none.title = 'Solid color'; none.textContent = 'None';
+      none.onclick = () => { expBg = null; updateExpTiles(); scheduleExpPreview(); };
+      grid.appendChild(none);
+
+      bgs.forEach(fname => {
+        const div = document.createElement('div');
+        div.className = 'bg-thumb' + (expBg === fname ? ' selected' : '');
+        div.dataset.fname = fname; div.title = fname;
+        const img = document.createElement('img');
+        img.src = `/backgrounds/${encodeURIComponent(fname)}`;
+        img.loading = 'lazy';
+        div.appendChild(img);
+        div.onclick = () => { expBg = fname; updateExpTiles(); scheduleExpPreview(); };
+        grid.appendChild(div);
+      });
+    }
+
+    document.getElementById('export-modal').classList.add('open');
+    renderExpPreview();
+  }
+
+  function closeExportModal() {
+    document.getElementById('export-modal').classList.remove('open');
+  }
+
+  function updateExpTiles() {
+    document.querySelectorAll('#exp-bg-grid .bg-thumb').forEach(el => {
+      el.classList.toggle('selected', (el.dataset.fname || null) === expBg);
+    });
+  }
+
+  function scheduleExpPreview() {
+    clearTimeout(expPreviewTimer);
+    expPreviewTimer = setTimeout(renderExpPreview, 350);
+  }
+
+  async function renderExpPreview() {
     const raw = document.getElementById('input-area').value.trim();
     const text = filterText(raw);
     if (!text) return;
 
     const font_file = document.getElementById('font-select').value;
     const font_size = parseInt(document.getElementById('font-size').value);
-    const fg = document.getElementById('fg-color').value;
-    const bg = document.getElementById('bg-color').value;
+    const fg = document.getElementById('exp-fg').value;
+    const bg = document.getElementById('exp-bg').value;
+
+    const prev = document.getElementById('export-preview');
+    prev.innerHTML = '<div class="spinner"></div>';
+
+    try {
+      const resp = await fetch('/download', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text, font_file, font_size, fg, bg,
+                               bg_image: expBg || null })
+      });
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      prev.innerHTML = `<img src="${url}" alt="preview">`;
+    } catch(e) {
+      prev.innerHTML = `<div class="placeholder-text" style="color:var(--crimson)">Error</div>`;
+    }
+  }
+
+  async function doDownload() {
+    const raw = document.getElementById('input-area').value.trim();
+    const text = filterText(raw);
+    if (!text) return;
+
+    const font_file = document.getElementById('font-select').value;
+    const font_size = parseInt(document.getElementById('font-size').value);
+    const fg = document.getElementById('exp-fg').value;
+    const bg = document.getElementById('exp-bg').value;
 
     const resp = await fetch('/download', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ text, font_file, font_size, fg, bg,
-                             bg_image: selectedBg || null })
+                             bg_image: expBg || null })
     });
     if (!resp.ok) { showToast('Download failed'); return; }
 
@@ -1072,7 +1335,13 @@
     a.download = 'hebrew_text.png';
     a.click();
     URL.revokeObjectURL(a.href);
+    closeExportModal();
   }
+
+  // Close on backdrop click
+  document.getElementById('export-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('export-modal')) closeExportModal();
+  });
 </script>
 </body>
 </html>
