@@ -1,8 +1,9 @@
 import base64
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import Optional
 
 import renderer
 
@@ -16,6 +17,7 @@ class RenderRequest(BaseModel):
     font_size: int = 60
     bg: str = "#ffffff"
     fg: str = "#1a1a1a"
+    bg_image: Optional[str] = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -27,6 +29,19 @@ def index():
 @app.get("/fonts")
 def fonts():
     return renderer.list_fonts()
+
+
+@app.get("/backgrounds")
+def backgrounds():
+    return renderer.list_backgrounds()
+
+
+@app.get("/backgrounds/{filename}")
+def background_image(filename: str):
+    path = renderer.get_background_path(filename)
+    if not path:
+        raise HTTPException(404, "Background not found")
+    return FileResponse(path)
 
 
 @app.post("/render")
@@ -41,6 +56,7 @@ def render(req: RenderRequest):
             font_size=req.font_size,
             bg=req.bg,
             fg=req.fg,
+            bg_image=req.bg_image,
         )
         return JSONResponse({"image": base64.b64encode(png).decode()})
     except Exception as e:

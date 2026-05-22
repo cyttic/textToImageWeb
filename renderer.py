@@ -5,33 +5,32 @@ import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
 
-# Hebrew nikud (vowel points) + cantillation marks: U+0591–U+05C7
 _NIKUD_RE = re.compile(r'[֑-ׇ]')
-
-def strip_nikud(text: str) -> str:
-    """Remove Hebrew diacritical marks (nikud, dagesh, cantillation) from text."""
-    return _NIKUD_RE.sub('', text)
 
 FONT_DIRS = [
     "/mnt/ssd2/cyttic/datasets/hebrew-handwritten-dataset/fonts_out",
     "/mnt/ssd2/cyttic/projects/handwrittenTextGenerator/fonts",
 ]
 
+BG_DIR = "/mnt/ssd2/cyttic/projects/handwrittenTextGenerator/images"
+
+
+def strip_nikud(text: str) -> str:
+    return _NIKUD_RE.sub('', text)
+
 
 def list_fonts() -> list[dict]:
     fonts = []
-    seen = set()
+    seen  = set()
     for d in FONT_DIRS:
         if not os.path.isdir(d):
             continue
         for fname in sorted(os.listdir(d)):
             if fname.lower().endswith(".ttf") and fname not in seen:
                 seen.add(fname)
-                fonts.append({
-                    "name": fname.replace(".ttf", ""),
-                    "file": fname,
-                    "path": os.path.join(d, fname),
-                })
+                fonts.append({"name": fname.replace(".ttf", ""),
+                               "file": fname,
+                               "path": os.path.join(d, fname)})
     return fonts
 
 
@@ -43,15 +42,29 @@ def get_font_path(font_file: str) -> str | None:
     return None
 
 
+def list_backgrounds() -> list[str]:
+    if not os.path.isdir(BG_DIR):
+        return []
+    return sorted(
+        f for f in os.listdir(BG_DIR)
+        if f.lower().endswith((".png", ".jpg", ".jpeg"))
+    )
+
+
+def get_background_path(filename: str) -> str | None:
+    p = os.path.join(BG_DIR, filename)
+    return p if os.path.exists(p) else None
+
+
 def render(text: str, font_path: str, font_size: int = 60,
            max_width: int = 760, padding: int = 30,
-           bg: str = "#ffffff", fg: str = "#1a1a1a") -> bytes:
+           bg: str = "#ffffff", fg: str = "#1a1a1a",
+           bg_image: str | None = None) -> bytes:
 
     text = strip_nikud(text)
     font = ImageFont.truetype(font_path, size=font_size)
 
-    # Wrap long text into lines
-    avg_char_px = font_size * 0.6
+    avg_char_px   = font_size * 0.6
     chars_per_line = max(1, int(max_width / avg_char_px))
     raw_lines = text.splitlines() or [""]
     lines = []
@@ -59,31 +72,47 @@ def render(text: str, font_path: str, font_size: int = 60,
         if not raw.strip():
             lines.append("")
             continue
-        wrapped = textwrap.wrap(raw, width=chars_per_line) or [raw]
-        lines.extend(wrapped)
+        lines.extend(textwrap.wrap(raw, width=chars_per_line) or [raw])
 
-    # Measure
-    dummy   = Image.new("RGB", (1, 1))
-    draw    = ImageDraw.Draw(dummy)
-    line_h  = font_size + int(font_size * 0.3)
-    widths  = []
-    for line in lines:
-        if line:
-            bb = draw.textbbox((0, 0), line, font=font)
-            widths.append(bb[2] - bb[0])
-        else:
-            widths.append(0)
+    dummy  = Image.new("RGB", (1, 1))
+    draw   = ImageDraw.Draw(dummy)
+    line_h = font_size + int(font_size * 0.3)
+    widths = [
+        (draw.textbbox((0, 0), line, font=font)[2] -
+         draw.textbbox((0, 0), line, font=font)[0])
+        if line else 0
+        for line in lines
+    ]
 
     img_w = min(max(max_width, max(widths, default=0) + 2 * padding), 1600)
     img_h = line_h * len(lines) + 2 * padding
 
-    img  = Image.new("RGB", (img_w, img_h), bg)
-    draw = ImageDraw.Draw(img)
+    # Build background
+    if bg_image:
+        bg_path = get_background_path(bg_image)
+        if bg_path:
+            src = Image.open(bg_path).convert("RGB")
+            # Crop a centered region that matches our target size
+            sw, sh = src.size
+            if sw < img_w or sh < img_h:
+                src = src.resize((max(sw, img_w), max(sh, img_h)))
+                sw, sh = src.size
+            left = (sw - img_w) // 2
+            top  = (sh - img_h) // 2
+            img  = src.crop((left, top, left + img_w, top + img_h))
+        else:
+            img = Image.new("RGB", (img_w, img_h), bg)
+    else:
+        img = Image.new("RGB", (img_w, img_h), bg)
 
+    draw = ImageDraw.Draw(img)
     y = padding
     for line in lines:
         if line.strip():
-            draw.text((padding, y), line, font=font, fill=fg)
+            bb = draw.textbbox((0, 0), line, font=font)
+            lw = bb[2] - bb[0]
+            x  = img_w - padding - lw
+            draw.text((x, y), line, font=font, fill=fg)
         y += line_h
 
     buf = io.BytesIO()

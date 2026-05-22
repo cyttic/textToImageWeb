@@ -184,6 +184,39 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Background picker modal ── */
+    #bg-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    #bg-modal.open { display: flex; }
+    #bg-modal-box {
+      background: #fff; border-radius: 12px;
+      padding: 20px; width: 680px; max-width: 95vw;
+      max-height: 80vh; display: flex; flex-direction: column;
+      gap: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    #bg-modal-box h3 { font-size: 15px; color: #202124; direction: ltr; }
+    #bg-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px; overflow-y: auto; padding-right: 4px;
+    }
+    .bg-thumb {
+      cursor: pointer; border-radius: 6px; overflow: hidden;
+      border: 2px solid transparent; transition: border-color .15s;
+      aspect-ratio: 1; background: #f1f3f4;
+    }
+    .bg-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .bg-thumb:hover { border-color: #1a73e8; }
+    .bg-thumb.selected { border-color: #1a73e8; box-shadow: 0 0 0 2px #c2d7fb; }
+    .bg-none {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: #5f6368; background: repeating-linear-gradient(
+        45deg, #f8f9fa, #f8f9fa 5px, #e8eaed 5px, #e8eaed 10px);
+    }
+    #bg-modal-footer { display: flex; justify-content: flex-end; gap: 8px; direction: ltr; }
+
     /* ── Toggle switch ── */
     .toggle-wrap {
       display: flex; align-items: center; gap: 8px;
@@ -237,6 +270,10 @@
 
   <label>Background:</label>
   <input type="color" id="bg-color" value="#ffffff">
+  <button class="btn btn-ghost" id="bg-pick-btn" onclick="openBgModal()" style="font-size:13px; padding:6px 12px;">
+    🖼 Background image
+  </button>
+  <span id="bg-selected-name" style="font-size:12px; color:#1a73e8; display:none;"></span>
 
   <div class="toggle-wrap">
     <label for="hebrew-only">Hebrew alphabet only</label>
@@ -248,6 +285,18 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- Background picker modal -->
+<div id="bg-modal">
+  <div id="bg-modal-box">
+    <h3>Choose background texture</h3>
+    <div id="bg-grid"></div>
+    <div id="bg-modal-footer">
+      <button class="btn btn-ghost" onclick="clearBg()">Clear (solid color)</button>
+      <button class="btn btn-primary" onclick="closeBgModal()">Done</button>
+    </div>
+  </div>
+</div>
 
 <div class="panels">
 
@@ -289,6 +338,71 @@
   let debounceTimer = null;
   let lastImgData = null;
   let toastTimer = null;
+  let selectedBg = null;   // filename or null
+
+  // ── Background picker ────────────────────────────────────────────────────
+  async function openBgModal() {
+    const grid = document.getElementById('bg-grid');
+    if (!grid.children.length) {
+      const bgs = await fetch('/backgrounds').then(r => r.json());
+
+      // "None" tile
+      const none = document.createElement('div');
+      none.className = 'bg-thumb bg-none' + (!selectedBg ? ' selected' : '');
+      none.title = 'Solid color';
+      none.textContent = 'None';
+      none.onclick = () => { selectBg(null); updateTiles(); };
+      grid.appendChild(none);
+
+      bgs.forEach(fname => {
+        const div = document.createElement('div');
+        div.className = 'bg-thumb' + (selectedBg === fname ? ' selected' : '');
+        div.title = fname;
+        div.dataset.fname = fname;
+        const img = document.createElement('img');
+        img.src = `/backgrounds/${encodeURIComponent(fname)}`;
+        img.loading = 'lazy';
+        div.appendChild(img);
+        div.onclick = () => { selectBg(fname); updateTiles(); };
+        grid.appendChild(div);
+      });
+    }
+    document.getElementById('bg-modal').classList.add('open');
+  }
+
+  function closeBgModal() {
+    document.getElementById('bg-modal').classList.remove('open');
+    renderNow();
+  }
+
+  function clearBg() {
+    selectBg(null);
+    updateTiles();
+    closeBgModal();
+  }
+
+  function selectBg(fname) {
+    selectedBg = fname;
+    const nameEl = document.getElementById('bg-selected-name');
+    if (fname) {
+      nameEl.textContent = '✓ ' + fname;
+      nameEl.style.display = 'inline';
+    } else {
+      nameEl.style.display = 'none';
+    }
+  }
+
+  function updateTiles() {
+    document.querySelectorAll('.bg-thumb').forEach(el => {
+      const fname = el.dataset.fname || null;
+      el.classList.toggle('selected', fname === selectedBg);
+    });
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('bg-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('bg-modal')) closeBgModal();
+  });
 
   // Hebrew letters + final forms: U+05D0–U+05EA
   const HEBREW_RE = /[^א-ת\s]/g;
@@ -380,7 +494,8 @@
     const resp = await fetch('/render', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ text, font_file, font_size, fg, bg })
+        body: JSON.stringify({ text, font_file, font_size, fg, bg,
+                               bg_image: selectedBg || null })
       });
       if (!resp.ok) throw new Error(await resp.text());
       const data = await resp.json();
