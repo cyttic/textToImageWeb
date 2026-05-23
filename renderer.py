@@ -3,6 +3,7 @@ import os
 import re
 import textwrap
 
+from bidi.algorithm import get_display
 from PIL import Image, ImageDraw, ImageFont
 
 _NIKUD_RE = re.compile(r'[֑-ׇ]')
@@ -84,6 +85,8 @@ def render(text: str, font_path: str, font_size: int = 60,
             lines.append("")
             continue
         lines.extend(textwrap.wrap(raw, width=chars_per_line) or [raw])
+
+    lines = [get_display(line) if line.strip() else line for line in lines]
 
     dummy  = Image.new("RGB", (1, 1))
     draw   = ImageDraw.Draw(dummy)

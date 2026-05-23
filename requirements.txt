@@ -5,3 +5,4 @@ fonttools==4.63.0
 opencv-python-headless
 python-multipart
 numpy
+python-bidi
