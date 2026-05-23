@@ -870,7 +870,7 @@
   <div class="ctrl-group toggle-wrap">
     <label class="ctrl-label" for="hebrew-only">Hebrew only</label>
     <label class="switch">
-      <input type="checkbox" id="hebrew-only">
+      <input type="checkbox" id="hebrew-only" checked>
       <span class="slider"></span>
     </label>
   </div>
@@ -956,7 +956,9 @@
       <span class="char-count" id="char-count">0 chars</span>
     </div>
     <div class="input-shell">
-      <textarea id="input-area" placeholder="הקלד כאן טקסט בעברית…" spellcheck="false"></textarea>
+      <textarea id="input-area" placeholder="הקלד כאן טקסט בעברית…" spellcheck="false">טקסט עברי מודפס ניתן לעיצוב בכתב יד
+בחר מתוך מאתיים עשרים ושבעה גופנים
+ושמור עם רקע לבחירתך</textarea>
     </div>
     <div id="nikud-notice">
       Nikud (vowel points) detected — stripped automatically for rendering.
@@ -1097,15 +1099,16 @@
     return filtered;
   }
 
-  // Load fonts
+  // Load fonts then auto-render the default text
   fetch('/fonts').then(r => r.json()).then(data => {
     fonts = data;
     const sel = document.getElementById('font-select');
     sel.innerHTML = fonts.map(f =>
       `<option value="${f.file}">${f.name}</option>`).join('');
-  }).catch(() => {
-    // keep loading placeholder if endpoint missing
-  });
+    const txt = document.getElementById('input-area').value;
+    document.getElementById('char-count').textContent = txt.length + ' chars';
+    renderNow();
+  }).catch(() => {});
 
   // Char count
   document.getElementById('input-area').addEventListener('input', () => {
