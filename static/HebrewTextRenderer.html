@@ -856,16 +856,9 @@
     <span id="size-label">60 px</span>
   </div>
 
-  <div class="ctrl-group">
-    <span class="ctrl-label">Ink</span>
-    <input type="color" id="fg-color" value="#1a1a1a">
-    <span class="ctrl-label" style="margin-left:8px;">Paper</span>
-    <input type="color" id="bg-color" value="#ffffff">
-    <button id="bg-pick-btn" onclick="openBgModal()">
-      <span class="icon"></span> Texture
-    </button>
-    <span id="bg-selected-name" style="display:none;"></span>
-  </div>
+  <input type="color" id="fg-color" value="#1a1a1a" style="display:none">
+  <input type="color" id="bg-color" value="#ffffff" style="display:none">
+  <span id="bg-selected-name" style="display:none;"></span>
 
   <div class="ctrl-group toggle-wrap">
     <label class="ctrl-label" for="hebrew-only">Hebrew only</label>
