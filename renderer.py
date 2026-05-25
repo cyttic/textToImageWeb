@@ -68,7 +68,7 @@ def get_background_path(filename: str) -> str | None:
 
 
 def render(text: str, font_path: str, font_size: int = 60,
-           max_width: int = 760, padding: int = 30,
+           max_width: int = 1600, padding: int = 30,
            bg: str = "#ffffff", fg: str = "#1a1a1a",
            bg_image: str | None = None,
            transparent: bool = False) -> bytes:
@@ -98,7 +98,7 @@ def render(text: str, font_path: str, font_size: int = 60,
         for line in lines
     ]
 
-    img_w = min(max(max_width, max(widths, default=0) + 2 * padding), 1600)
+    img_w = min(max(max_width, max(widths, default=0) + 2 * padding), 3200)
     img_h = line_h * len(lines) + 2 * padding
 
     # Build background
